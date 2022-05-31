@@ -30,14 +30,16 @@ impl ClientAccount {
     /// Takes a state 1 transaction and writes it
     pub(crate) async fn execute_deposit(&mut self, r: DepositRequest) -> Result<(), RuntimeError> {
         self.ensure_unlocked()?;
-        let result = SerializableTransaction::new_from_state1(Box::new(&r)).unwrap();
+        let result = SerializableTransaction::new_from_state1(Box::new(&r))?;
         if let Ok(_) = SerializableTransaction::read(r.0.tx_id).await {
             return Err(RuntimeError::Recoverable(
                 RuntimeErrorType::TransactionAlreadyPresent,
             ));
         }
         result.overwrite_state().await?;
-        self.available += r.0.amount.clone().unwrap();
+        self.available +=
+            &r.0.amount
+                .expect("Deposit Request makes sure this is there");
         Ok(())
     }
 
@@ -290,7 +292,10 @@ impl SerializableTransaction {
             }
         };
         Ok(Self {
-            amount: csv_transaction.amount.clone().unwrap(),
+            amount: csv_transaction
+                .amount
+                .clone()
+                .expect("State 1 transactions have an amount"),
             client_id: csv_transaction.client_id,
             tx_id: csv_transaction.tx_id,
             transaction_type,

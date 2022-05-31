@@ -91,7 +91,7 @@ impl Runner {
                                 if let Err(NonRecoverable(e_type)) = account
                                     .lock()
                                     .await
-                                    .execute_deposit(transaction.try_into().unwrap())
+                                    .execute_deposit(transaction.try_into()?)
                                     .await
                                 {
                                     panic!("{:?}", e_type);
@@ -102,7 +102,7 @@ impl Runner {
                                 if let Err(NonRecoverable(e_type)) = account
                                     .lock()
                                     .await
-                                    .execute_withdrawal(transaction.try_into().unwrap())
+                                    .execute_withdrawal(transaction.try_into()?)
                                     .await
                                 {
                                     panic!("{:?}", e_type);
@@ -114,7 +114,7 @@ impl Runner {
                                 if let Err(NonRecoverable(e_type)) = account
                                     .lock()
                                     .await
-                                    .execute_dispute(transaction.try_into().unwrap())
+                                    .execute_dispute(transaction.try_into()?)
                                     .await
                                 {
                                     panic!("{:?}", e_type);
@@ -126,7 +126,7 @@ impl Runner {
                                 if let Err(NonRecoverable(e_type)) = account
                                     .lock()
                                     .await
-                                    .execute_resolve(transaction.try_into().expect(""))
+                                    .execute_resolve(transaction.try_into()?)
                                     .await
                                 {
                                     panic!("{:?}", e_type);
@@ -138,7 +138,7 @@ impl Runner {
                                 if let Err(NonRecoverable(e_type)) = account
                                     .lock()
                                     .await
-                                    .execute_chargeback(transaction.try_into().expect(""))
+                                    .execute_chargeback(transaction.try_into()?)
                                     .await
                                 {
                                     panic!("{:?}", e_type);
@@ -146,16 +146,13 @@ impl Runner {
                             }
                         }
                     }
+                    Result::Ok::<(), RuntimeError>(())
                 });
                 handles.push(handle);
             }
             //await before starting the next batch
             for x in futures::future::join_all(handles).await {
-                x.map_err(|e| {
-                    RuntimeError::NonRecoverable(RuntimeErrorType::JoinError(
-                        "Not all futures succeeded".to_string(),
-                    ))
-                })?
+                x.map_err(|e| RuntimeError::NonRecoverable(RuntimeErrorType::JoinError(e)))?;
             }
         }
 

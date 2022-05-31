@@ -1,5 +1,6 @@
 use futures::io;
 use thiserror::Error;
+use tokio::task::JoinError;
 
 #[derive(Error, Debug)]
 pub enum RuntimeError {
@@ -27,8 +28,8 @@ pub enum RuntimeErrorType {
     LockedAccount(String),
     #[error("WrongTransactionState {0}")]
     WrongTransactionState(String),
-    #[error("Join error {0}")]
-    JoinError(String),
+    #[error(transparent)]
+    JoinError(#[from] JoinError),
     #[error("TransactionAlreadyPresent")]
     TransactionAlreadyPresent,
     #[error(transparent)]
