@@ -1,6 +1,6 @@
 use crate::error::RuntimeError::NonRecoverable;
 use crate::error::{RuntimeError, RuntimeErrorType};
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, Zero};
 use csv::StringRecord;
 use std::convert::TryFrom;
 use std::str::FromStr;
@@ -139,6 +139,21 @@ impl State1 for WithdrawalRequest {
 impl TryFrom<CSVTransaction> for WithdrawalRequest {
     type Error = RuntimeError;
     fn try_from(value: CSVTransaction) -> Result<Self, Self::Error> {
+        match &value.amount {
+            None => {
+                return Err(RuntimeError::NonRecoverable(RuntimeErrorType::ParseError(
+                    "Amount not present".to_string(),
+                )))
+            }
+            Some(x) => {
+                if x < &BigDecimal::zero() {
+                    return Err(RuntimeError::NonRecoverable(RuntimeErrorType::ParseError(
+                        "Amount not present".to_string(),
+                    )));
+                }
+            }
+        }
+
         match value.transaction_type {
             CSVTransactionType::Withdrawal => Ok(WithdrawalRequest(value)),
             _ => Err(RuntimeError::Recoverable(RuntimeErrorType::ParseError(
@@ -151,6 +166,21 @@ impl TryFrom<CSVTransaction> for WithdrawalRequest {
 impl TryFrom<CSVTransaction> for DepositRequest {
     type Error = RuntimeError;
     fn try_from(value: CSVTransaction) -> Result<Self, Self::Error> {
+        match &value.amount {
+            None => {
+                return Err(RuntimeError::NonRecoverable(RuntimeErrorType::ParseError(
+                    "Amount not present".to_string(),
+                )))
+            }
+            Some(x) => {
+                if x < &BigDecimal::zero() {
+                    return Err(RuntimeError::NonRecoverable(RuntimeErrorType::ParseError(
+                        "Amount not present".to_string(),
+                    )));
+                }
+            }
+        }
+
         match value.transaction_type {
             CSVTransactionType::Deposit => Ok(DepositRequest(value)),
             _ => Err(RuntimeError::Recoverable(RuntimeErrorType::ParseError(
