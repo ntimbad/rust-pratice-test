@@ -51,13 +51,21 @@ impl ClientAccount {
             r.0.amount
                 .as_ref()
                 .expect("Withdrawal wrapper makes sure amount is present and is positive"),
-        )?;
-        let result = SerializableTransaction::new_from_state1(Box::new(&r))?;
+        )
+        .map_err(|e| {
+            // Make sure to ignore balance issues here
+            if let RuntimeError::NonRecoverable(e) = e {
+                RuntimeError::Recoverable(e)
+            } else {
+                e
+            }
+        })?;
         if let Ok(_) = SerializableTransaction::read(r.0.tx_id).await {
             return Err(RuntimeError::Recoverable(
                 RuntimeErrorType::TransactionAlreadyPresent,
             ));
         }
+        let result = SerializableTransaction::new_from_state1(Box::new(&r))?;
         result.overwrite_state().await?;
 
         self.available -=
@@ -71,7 +79,26 @@ impl ClientAccount {
     /// Converts it into state 2
     pub(crate) async fn execute_dispute(&mut self, r: DisputeRequest) -> Result<(), RuntimeError> {
         self.ensure_unlocked()?;
-        let s = SerializableTransaction::read(r.0.tx_id).await.unwrap();
+        let s = match SerializableTransaction::read(r.0.tx_id).await {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(RuntimeError::Recoverable(
+                    RuntimeErrorType::WrongTransactionState("Transaction not present".to_string()),
+                ));
+            }
+        };
+
+        match s.state {
+            SerializableState::State1 => {}
+            _ => {
+                return Err(RuntimeError::Recoverable(
+                    RuntimeErrorType::WrongTransactionState(
+                        "Transaction in wrong state".to_string(),
+                    ),
+                ));
+            }
+        }
+
         let s = s.upgrade_state();
         s.overwrite_state().await?;
 
@@ -92,7 +119,26 @@ impl ClientAccount {
     ///Writes it back to state 3
     pub(crate) async fn execute_resolve(&mut self, r: ResolveRequest) -> Result<(), RuntimeError> {
         self.ensure_unlocked()?;
-        let s = SerializableTransaction::read(r.0.tx_id).await?;
+        let s = match SerializableTransaction::read(r.0.tx_id).await {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(RuntimeError::Recoverable(
+                    RuntimeErrorType::WrongTransactionState("Transaction not present".to_string()),
+                ));
+            }
+        };
+
+        match s.state {
+            SerializableState::State2 => {}
+            _ => {
+                return Err(RuntimeError::Recoverable(
+                    RuntimeErrorType::WrongTransactionState(
+                        "Transaction in wrong state".to_string(),
+                    ),
+                ));
+            }
+        }
+
         let s = s.upgrade_state();
         s.overwrite_state().await?;
         match s.transaction_type {
@@ -118,7 +164,24 @@ impl ClientAccount {
         r: ChargeBackRequest,
     ) -> Result<(), RuntimeError> {
         self.ensure_unlocked()?;
-        let s = SerializableTransaction::read(r.0.tx_id).await.unwrap();
+        let s = match SerializableTransaction::read(r.0.tx_id).await {
+            Ok(x) => x,
+            Err(_) => {
+                return Err(RuntimeError::Recoverable(
+                    RuntimeErrorType::WrongTransactionState("Transaction not present".to_string()),
+                ));
+            }
+        };
+        match s.state {
+            SerializableState::State2 => {}
+            _ => {
+                return Err(RuntimeError::Recoverable(
+                    RuntimeErrorType::WrongTransactionState(
+                        "Transaction in wrong state".to_string(),
+                    ),
+                ));
+            }
+        }
         let s = s.upgrade_state();
         s.overwrite_state().await?;
         match s.transaction_type {

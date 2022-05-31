@@ -1,3 +1,4 @@
+use futures::io;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -30,4 +31,6 @@ pub enum RuntimeErrorType {
     JoinError(String),
     #[error("TransactionAlreadyPresent")]
     TransactionAlreadyPresent,
+    #[error(transparent)]
+    IOError(#[from] io::Error),
 }
