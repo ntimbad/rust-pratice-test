@@ -43,7 +43,6 @@ impl Runner {
                         match csv_transaction_result {
                             Ok(csv_transaction) => Some(csv_transaction),
                             Err(e) => {
-                                println!("{:?}", e);
                                 None
                             }
                         }
