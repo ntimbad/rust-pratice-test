@@ -42,9 +42,7 @@ impl Runner {
                         let csv_transaction_result = CSVTransaction::try_from(line);
                         match csv_transaction_result {
                             Ok(csv_transaction) => Some(csv_transaction),
-                            Err(e) => {
-                                None
-                            }
+                            Err(e) => None,
                         }
                     }
                     Err(e) => {
@@ -168,9 +166,9 @@ impl Runner {
             println!(
                 "{},{},{},{},{}",
                 client,
-                guard.available,
-                guard.held,
-                (guard.available.clone() + guard.held.clone()),
+                &guard.available,
+                &guard.held,
+                (&guard.available + &guard.held),
                 guard.locked
             );
         }
