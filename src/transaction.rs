@@ -74,7 +74,7 @@ impl TryFrom<StringRecord> for CSVTransaction {
                     ))
                 })?
                 .trim();
-            u16::from_str(client_id).map_err(|e| {
+            u16::from_str(client_id).map_err(|_e| {
                 NonRecoverable(RuntimeErrorType::CSVLineParseError(
                     "Parse client_id".to_string(),
                 ))

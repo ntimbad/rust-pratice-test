@@ -30,8 +30,8 @@ impl ClientAccount {
     /// Takes a state 1 transaction and writes it
     pub(crate) async fn execute_deposit(&mut self, r: DepositRequest) -> Result<(), RuntimeError> {
         self.ensure_unlocked()?;
-        let result = SerializableTransaction::new_from_state1(Box::new(&r))?;
-        if let Ok(_) = SerializableTransaction::read(r.0.tx_id).await {
+        let result = SerializableTransaction::new_from_state1(&r)?;
+        if SerializableTransaction::read(r.0.tx_id).await.is_ok() {
             return Err(RuntimeError::Recoverable(
                 RuntimeErrorType::TransactionAlreadyPresent,
             ));
@@ -62,12 +62,12 @@ impl ClientAccount {
                 e
             }
         })?;
-        if let Ok(_) = SerializableTransaction::read(r.0.tx_id).await {
+        if SerializableTransaction::read(r.0.tx_id).await.is_ok() {
             return Err(RuntimeError::Recoverable(
                 RuntimeErrorType::TransactionAlreadyPresent,
             ));
         }
-        let result = SerializableTransaction::new_from_state1(Box::new(&r))?;
+        let result = SerializableTransaction::new_from_state1(&r)?;
         result.overwrite_state().await?;
 
         self.available -=
@@ -278,7 +278,7 @@ struct SerializableTransaction {
 }
 
 impl SerializableTransaction {
-    pub fn new_from_state1(transaction: Box<&dyn State1>) -> Result<Self, RuntimeError> {
+    pub fn new_from_state1(transaction: &dyn State1) -> Result<Self, RuntimeError> {
         let csv_transaction = transaction.inner();
         let transaction_type = match csv_transaction.transaction_type {
             CSVTransactionType::Deposit => SerializableTransactionType::Deposit,
@@ -305,7 +305,7 @@ impl SerializableTransaction {
 
     pub(crate) async fn overwrite_state(&self) -> Result<(), RuntimeError> {
         let path = format!("{}{}", TEMP_DIRECTORY_LOC, self.tx_id);
-        tokio::fs::remove_file(path.clone()).await.map_err(|_| {
+        let _ = tokio::fs::remove_file(path.clone()).await.map_err(|_| {
             RuntimeError::NonRecoverable(RuntimeErrorType::TransactionFileOps(
                 "Remove file failed".to_string(),
             ))

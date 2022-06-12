@@ -24,7 +24,7 @@ impl Runner {
     }
 
     pub async fn run(&mut self) -> Result<(), RuntimeError> {
-        tokio::fs::remove_dir_all(PathBuf::from(TEMP_DIRECTORY_LOC)).await; // do if possible
+        let _ = tokio::fs::remove_dir_all(PathBuf::from(TEMP_DIRECTORY_LOC)).await; // do if possible
         tokio::fs::create_dir_all(PathBuf::from(TEMP_DIRECTORY_LOC))
             .await
             .map_err(|e| NonRecoverable(RuntimeErrorType::TransactionFileOps(e.to_string())))?;
@@ -42,7 +42,7 @@ impl Runner {
                         let csv_transaction_result = CSVTransaction::try_from(line);
                         match csv_transaction_result {
                             Ok(csv_transaction) => Some(csv_transaction),
-                            Err(e) => None,
+                            Err(_e) => None,
                         }
                     }
                     Err(e) => {
@@ -149,11 +149,12 @@ impl Runner {
             }
             //await before starting the next batch
             for x in futures::future::join_all(handles).await {
-                x.map_err(|e| RuntimeError::NonRecoverable(RuntimeErrorType::JoinError(e)))?;
+                let _ =
+                    x.map_err(|e| RuntimeError::NonRecoverable(RuntimeErrorType::JoinError(e)))?;
             }
         }
 
-        tokio::fs::remove_dir_all(PathBuf::from(TEMP_DIRECTORY_LOC))
+        let _ = tokio::fs::remove_dir_all(PathBuf::from(TEMP_DIRECTORY_LOC))
             .await
             .map_err(|e| Recoverable(RuntimeErrorType::CSVFileReadWriteError(e.to_string())));
         Ok(())
@@ -174,6 +175,7 @@ impl Runner {
         }
     }
 
+    #[allow(dead_code)]
     /// Intended for tests only. Helps verify with automated tests.
     pub async fn get_cloned_account_snapshot(&self, account_id: u16) -> Option<ClientAccount> {
         match &self.client_map.get(&account_id) {
